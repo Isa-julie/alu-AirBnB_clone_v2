@@ -1,58 +1,33 @@
 #!/usr/bin/python3
-"""
-Fabric script that distributes an archive to your web servers
-"""
-
+"""Fabric script that distributes an archive to your web servers"""
 from fabric.api import env, put, run
 from os.path import exists
 
-# Updated with your actual server IPs
-env.hosts = ['3.92.48.63', '44.202.237.194']  # web-01 and web-02
-env.user = 'ubuntu'
-# Note: The load balancer (54.167.27.17) is not included as we deploy to web servers
+env.hosts = ["  3.92.48.63", "44.202.237.194"]
+env.user = "ubuntu"
+env.key = "~/.ssh/id_rsa"
+
 
 def do_deploy(archive_path):
-    """
-    Distributes an archive to the web servers.
-
-    Args:
-        archive_path (str): Path to the archive to be deployed.
-
-    Returns:
-        bool: True if all operations were successful, False otherwise.
-    """
+    """Function to distribute an archive to your web servers"""
     if not exists(archive_path):
         return False
-
     try:
-        # Upload the archive to /tmp/
+        file_name = archive_path.split("/")[-1]
+        name = file_name.split(".")[0]
+        path_name = "/data/web_static/releases/" + name
         put(archive_path, "/tmp/")
-
-        # Get the base filename without extension
-        filename = archive_path.split("/")[-1]
-        foldername = filename.split(".")[0]
-        release_path = f"/data/web_static/releases/{foldername}"
-
-        # Create the release directory
-        run(f"mkdir -p {release_path}")
-
-        # Uncompress the archive
-        run(f"tar -xzf /tmp/{filename} -C {release_path}")
-
-        # Remove the archive from /tmp/
-        run(f"rm /tmp/{filename}")
-
-        # Move contents to proper location
-        run(f"mv {release_path}/web_static/* {release_path}")
-        run(f"rm -rf {release_path}/web_static")
-
-        # Update the symbolic link
-        run("rm -rf /data/web_static/current")
-        run(f"ln -s {release_path} /data/web_static/current")
-
-        print("New version deployed successfully!")
+        run("mkdir -p {}/".format(path_name))
+        run('tar -xzf /tmp/{} -C {}/'.format(file_name, path_name))
+        run("rm /tmp/{}".format(file_name))
+        run("mv {}/web_static/* {}".format(path_name, path_name))
+        run("rm -rf {}/web_static".format(path_name))
+        run('rm -rf /data/web_static/current')
+        run('ln -s {}/ /data/web_static/current'.format(path_name))
         return True
-
-    except Exception as e:
-        print(f"Deployment failed: {e}")
+    except Exception:
         return False
+
+# Run the script like this:
+# $ fab -f 2-do_deploy_web_static.py
+# do_deploy:archive_path=versions/file_name.tgz
