@@ -24,4 +24,3 @@ def do_pack():
 
 # Run the script like this:
 # $ fab -f 1-pack_web_static.py do_pack
-
