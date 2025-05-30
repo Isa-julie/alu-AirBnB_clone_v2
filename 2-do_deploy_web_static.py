@@ -1,47 +1,58 @@
 #!/usr/bin/python3
 """
-Fabric script that distributes an archive to web servers
+Fabric script that distributes an archive to your web servers
 """
 
 from fabric.api import env, put, run
 from os.path import exists
 
-env.hosts = ['3.92.48.63', '44.202.237.194']  
+# Updated with your actual server IPs
+env.hosts = ['3.92.48.63', '44.202.237.194']  # web-01 and web-02
 env.user = 'ubuntu'
-# env.key_filename = '~/.ssh/id_rsa
+# Note: The load balancer (54.167.27.17) is not included as we deploy to web servers
 
 def do_deploy(archive_path):
-    """Distributes an archive to web servers"""
+    """
+    Distributes an archive to the web servers.
+
+    Args:
+        archive_path (str): Path to the archive to be deployed.
+
+    Returns:
+        bool: True if all operations were successful, False otherwise.
+    """
     if not exists(archive_path):
         return False
 
     try:
-        # Upload archive
+        # Upload the archive to /tmp/
         put(archive_path, "/tmp/")
 
-        file_name = archive_path.split("/")[-1]
-        folder_name = file_name.split(".")[0]
-        release_path = f"/data/web_static/releases/{folder_name}"
+        # Get the base filename without extension
+        filename = archive_path.split("/")[-1]
+        foldername = filename.split(".")[0]
+        release_path = f"/data/web_static/releases/{foldername}"
 
-        # Create target directory
+        # Create the release directory
         run(f"mkdir -p {release_path}")
 
-        # Uncompress archive
-        run(f"tar -xzf /tmp/{file_name} -C {release_path}")
+        # Uncompress the archive
+        run(f"tar -xzf /tmp/{filename} -C {release_path}")
 
-        # Remove archive
-        run(f"rm /tmp/{file_name}")
+        # Remove the archive from /tmp/
+        run(f"rm /tmp/{filename}")
 
-        # Move contents
+        # Move contents to proper location
         run(f"mv {release_path}/web_static/* {release_path}")
         run(f"rm -rf {release_path}/web_static")
 
-        # Update symbolic link
+        # Update the symbolic link
         run("rm -rf /data/web_static/current")
         run(f"ln -s {release_path} /data/web_static/current")
 
-        print("New version deployed!")
+        print("New version deployed successfully!")
         return True
+
     except Exception as e:
-        print(f"Deployment failed: {str(e)}")
+        print(f"Deployment failed: {e}")
         return False
